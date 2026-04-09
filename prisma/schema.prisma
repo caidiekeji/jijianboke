@@ -1,0 +1,171 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./boke.db"
+}
+
+// 用户表
+model User {
+  id       Int      @id @default(autoincrement())
+  email    String   @unique
+  password String
+  name     String
+  avatar   String?
+  role     String   @default("user")
+  status   String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  posts    Post[]
+  comments Comment[]
+  commentLikes CommentLike[]
+  
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}
+
+// 分类表
+model Category {
+  id       Int     @id @default(autoincrement())
+  name     String  @unique
+  slug     String  @unique
+  parentId Int?
+  parent   Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  posts    Post[]
+  order    Int     @default(0)
+  
+  @@index([name])
+  @@index([slug])
+  @@index([parentId])
+  @@index([order])
+}
+
+// 标签表
+model Tag {
+  id    Int     @id @default(autoincrement())
+  name  String  @unique
+  slug  String  @unique
+  posts PostTag[]
+  
+  @@index([name])
+  @@index([slug])
+}
+
+// 文章表
+model Post {
+  id         Int       @id @default(autoincrement())
+  title      String
+  slug       String    @unique
+  content    String
+  excerpt    String
+  cover      String?
+  status     String    @default("draft")
+  viewCount  Int       @default(0)
+  authorId   Int
+  author     User      @relation(fields: [authorId], references: [id])
+  categoryId Int?
+  category   Category? @relation(fields: [categoryId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  comments   Comment[]
+  tags       PostTag[]
+  
+  @@index([slug])
+  @@index([status])
+  @@index([viewCount])
+  @@index([authorId])
+  @@index([categoryId])
+  @@index([createdAt])
+}
+
+// 文章标签关联表
+model PostTag {
+  postId Int
+  tagId  Int
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@id([postId, tagId])
+}
+
+// 评论表
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  authorId  Int?
+  author    User?    @relation(fields: [authorId], references: [id])
+  postId    Int
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentId  Int?
+  parent    Comment? @relation("CommentHierarchy", fields: [parentId], references: [id])
+  children  Comment[] @relation("CommentHierarchy")
+  status    String   @default("pending")
+  likes     CommentLike[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([authorId])
+  @@index([postId])
+  @@index([parentId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// 评论点赞表
+model CommentLike {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  commentId Int
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, commentId])
+  @@index([userId])
+  @@index([commentId])
+}
+
+// 网站设置表
+model Setting {
+  id    String @id
+  value String
+  @@unique([id])
+}
+
+// 访问记录表
+model VisitLog {
+  id        Int      @id @default(autoincrement())
+  ip        String
+  userAgent String?
+  path      String
+  referrer  String?
+  country   String?
+  city      String?
+  userId    Int?
+  createdAt DateTime @default(now())
+  
+  @@index([ip])
+  @@index([path])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([path, createdAt])
+}
+
+// 每日访问统计表
+model DailyStats {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @unique
+  pageViews   Int      @default(0)
+  uniqueVisitors Int   @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([date])
+}
